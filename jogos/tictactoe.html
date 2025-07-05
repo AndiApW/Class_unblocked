@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Velha 2.0</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Estilos (CSS) --- */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #e0f7fa; /* Azul bem claro */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            color: red; /* Nome na cor vermelha */
+            margin-bottom: 25px;
+            font-weight: 700;
+        }
+
+        #menu button {
+            background-color: #00796b;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            margin: 10px;
+            transition: all 0.3s ease;
+            display: block;
+            width: 280px;
+        }
+
+        #menu button:hover {
+            background-color: #004d40;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 8px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: #f0f8ff;
+            border: none;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 64px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .cell:hover {
+            background-color: #d4e8e5;
+        }
+
+        /* Cores fixas para X e O */
+        .cell.x { color: #d32f2f; } /* Vermelho para X */
+        .cell.o { color: #1976d2; } /* Azul para O */
+        
+        #game-info {
+            margin-top: 25px;
+        }
+
+        #game-status {
+            font-size: 1.3em;
+            color: #333;
+            min-height: 40px;
+            font-weight: bold;
+        }
+
+        #game-controls button {
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        
+        #game-controls button:hover {
+             transform: translateY(-2px);
+             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        #restartButton {
+            background-color: #4CAF50; /* Verde */
+        }
+
+        #backToMenu {
+            background-color: #f44336; /* Vermelho */
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="menu" class="container">
+        <h1>Jogo da Velha</h1>
+        <button id="playerVsAi">Jogar contra a máquina</button>
+        <button id="playerVsPlayer">Jogar contra um amigo</button>
+    </div>
+
+    <div id="game" class="container" style="display: none;">
+        <h1 id="game-title">Jogo da Velha</h1>
+        <div id="board" class="board">
+            <div class="cell" data-cell-index="0"></div>
+            <div class="cell" data-cell-index="1"></div>
+            <div class="cell" data-cell-index="2"></div>
+            <div class="cell" data-cell-index="3"></div>
+            <div class="cell" data-cell-index="4"></div>
+            <div class="cell" data-cell-index="5"></div>
+            <div class="cell" data-cell-index="6"></div>
+            <div class="cell" data-cell-index="7"></div>
+            <div class="cell" data-cell-index="8"></div>
+        </div>
+        <div id="game-info">
+             <p id="game-status"></p>
+             <div id="game-controls">
+                <button id="restartButton" style="display: none;">Jogar Novamente</button>
+                <button id="backToMenu">Voltar ao Menu</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Lógica do Jogo (JavaScript) ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const menuScreen = document.getElementById('menu');
+        const gameScreen = document.getElementById('game');
+        const playerVsAiButton = document.getElementById('playerVsAi');
+        const playerVsPlayerButton = document.getElementById('playerVsPlayer');
+        const backToMenuButton = document.getElementById('backToMenu');
+        const restartButton = document.getElementById('restartButton');
+        const cells = document.querySelectorAll('[data-cell-index]');
+        const gameStatus = document.getElementById('game-status');
+        
+        const WINNING_COMBINATIONS = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+        
+        // **NOVO: Variáveis para controlar o estado do jogo**
+        let isPlayerVsAi = false;
+        let currentPlayer;
+        let gameState = ["", "", "", "", "", "", "", "", ""];
+        let isGameActive = true;
+        let firstPlayerOfRound = 'X'; // **NOVO: Controla quem começa a rodada**
+
+        const showScreen = (screen) => {
+            menuScreen.style.display = 'none';
+            gameScreen.style.display = 'none';
+            screen.style.display = 'block';
+        };
+
+        const startGame = (mode) => {
+            isPlayerVsAi = mode === 'ai';
+            isGameActive = true;
+            gameState = ["", "", "", "", "", "", "", "", ""];
+            
+            // **CORRIGIDO: Alterna quem começa**
+            currentPlayer = firstPlayerOfRound;
+            firstPlayerOfRound = firstPlayerOfRound === 'X' ? 'O' : 'X';
+
+            cells.forEach(cell => {
+                cell.innerText = '';
+                // **CORRIGIDO: Remove as classes de cor X e O ao reiniciar**
+                cell.classList.remove('x', 'o');
+            });
+            
+            restartButton.style.display = 'none';
+            updateGameStatus();
+            showScreen(gameScreen);
+
+            // **NOVO: Se for a vez da IA começar, ela joga**
+            if (isPlayerVsAi && currentPlayer === 'O') {
+                document.getElementById('board').style.pointerEvents = 'none';
+                setTimeout(aiMove, 700);
+            }
+        };
+
+        const updateGameStatus = () => {
+            if (isGameActive) {
+                 // **NOVO: Adicionado emoji sorrindo (pensando)**
+                gameStatus.innerText = `É a vez do Jogador ${currentPlayer} 🤔`;
+            }
+        };
+
+        const handleResultValidation = () => {
+            let roundWon = false;
+            for (let i = 0; i < WINNING_COMBINATIONS.length; i++) {
+                const winCondition = WINNING_COMBINATIONS[i];
+                const a = gameState[winCondition[0]];
+                const b = gameState[winCondition[1]];
+                const c = gameState[winCondition[2]];
+                if (a === '' || b === '' || c === '') continue;
+                if (a === b && b === c) {
+                    roundWon = true;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                // **NOVO: Adicionado emoji de vencedor**
+                gameStatus.innerText = `Jogador ${currentPlayer} venceu! 🏆😄`;
+                isGameActive = false;
+                restartButton.style.display = 'inline-block';
+                return;
+            }
+
+            if (!gameState.includes("")) {
+                // **NOVO: Adicionado emoji de empate**
+                gameStatus.innerText = 'O jogo empatou! 🤝';
+                isGameActive = false;
+                restartButton.style.display = 'inline-block';
+                return;
+            }
+
+            changePlayer();
+        };
+
+        const changePlayer = () => {
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateGameStatus();
+
+            if (isPlayerVsAi && currentPlayer === 'O' && isGameActive) {
+                document.getElementById('board').style.pointerEvents = 'none';
+                setTimeout(aiMove, 700);
+            }
+        };
+
+        const aiMove = () => {
+            const availableCells = gameState.map((cell, index) => cell === "" ? index : null).filter(val => val !== null);
+            const randomCellIndex = availableCells[Math.floor(Math.random() * availableCells.length)];
+            
+            if (randomCellIndex !== undefined) {
+                 const cell = document.querySelector(`[data-cell-index='${randomCellIndex}']`);
+                 cell.click(); // Simula o clique na célula
+            }
+            document.getElementById('board').style.pointerEvents = 'auto';
+        };
+
+        const handleCellClick = (clickedCellEvent) => {
+            const clickedCell = clickedCellEvent.target;
+            const clickedCellIndex = parseInt(clickedCell.getAttribute('data-cell-index'));
+
+            if (gameState[clickedCellIndex] !== "" || !isGameActive) {
+                return;
+            }
+
+            gameState[clickedCellIndex] = currentPlayer;
+            clickedCell.innerText = currentPlayer;
+            // **CORRIGIDO: A classe de cor é adicionada aqui e nunca muda**
+            clickedCell.classList.add(currentPlayer.toLowerCase());
+
+            handleResultValidation();
+        };
+
+        // Event Listeners
+        playerVsPlayerButton.addEventListener('click', () => startGame('player'));
+        playerVsAiButton.addEventListener('click', () => startGame('ai'));
+        backToMenuButton.addEventListener('click', () => {
+            firstPlayerOfRound = 'X'; // Reseta o jogador inicial ao voltar pro menu
+            showScreen(menuScreen);
+        });
+        restartButton.addEventListener('click', () => startGame(isPlayerVsAi ? 'ai' : 'player'));
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+    });
+</script>
+
+</body>
+</html>
